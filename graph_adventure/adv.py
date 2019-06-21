@@ -1,6 +1,7 @@
 from room import Room
 from player import Player
 from world import World
+from queue import Queue, LifoQueue
 
 import random
 
@@ -19,9 +20,119 @@ world.loadGraph(roomGraph)
 world.printRooms()
 player = Player("Name", world.startingRoom)
 
+'''
+player.currentRoom.id
+player.currentRoom.getExits()
+player.travel(direction)
+'''
 
-# FILL THIS IN
-traversalPath = ['n', 's']
+class Graph:
+    def __init__(self):
+        self.vertices = {}
+
+    def add_vertex(self, vertex):
+        self.vertices[vertex] = set()
+
+    def opposite_direction(self, direction):
+        exits = {'n': 's', 's': 'n', 'e': 'w', 'w': 'e'}
+        return exits[direction]
+
+    def bft(self, start):
+        visited = set()
+        q = Queue()
+        q.put(start)
+        while q.qsize > 0:
+            v = q.get()
+            if v not in visited:
+                visited.add(v)
+                for neighbor in self.vertices[v]:
+                    q.put(neighbor)
+
+    def bfs(self, start):
+        q = Queue()
+        q.put([start])
+        visited = set() 
+        
+        while q.qsize() > 0:
+            path = q.get()
+            vertex = path[-1]
+            if vertex not in visited:
+                visited.add(vertex)
+
+                for neighbor in self.vertices[vertex]:
+                    if self.vertices[vertex][neighbor] == '?':
+                        return path
+
+                for direction in self.vertices[vertex]:
+                    neighbor_room = self.vertices[vertex][direction]
+                    new_path = path.copy()
+                    new_path.append(neighbor_room)
+                    q.put(new_path)
+        return None
+
+    def dft(self, start):
+        visited = set()
+        s = LifoQueue()
+        s.put(start)
+        while s.qsize > 0:
+            v = s.get()
+            if v not in visited:
+                visited.add(v)
+                for neighbor in self.vertices[v]:
+                    s.put(neighbor)
+
+
+traversalPath = []
+visited = set()
+graph = Graph()
+
+while len(graph.vertices) < len(roomGraph):
+    # cur room is player.currR.id
+    curr_room = player.currentRoom.id
+    # add cur room to vertices
+    if curr_room not in graph.vertices:
+        graph.add_vertex(curr_room)
+        # set ? for all exits
+        graph.vertices[curr_room] = {i: '?' for i in player.currentRoom.getExits()}
+    room_exit = None
+    # for directions if ? room exit = direction
+    for direction in graph.vertices[curr_room]:
+        if graph.vertices[curr_room][direction] == '?':
+            room_exit = direction
+            # travel room exit
+            if room_exit is not None:
+                traversalPath.append(room_exit)
+                player.travel(room_exit)
+                
+                # if new cur room not in vertices add to graph
+                if player.currentRoom.id not in graph.vertices:
+                    graph.add_vertex(player.currentRoom.id)
+                    graph.vertices[player.currentRoom.id] = { i: '?' for i in player.currentRoom.getExits()}
+        # if cur room n = 1 player.curRoom.id s = cur room
+            graph.vertices[curr_room][room_exit] = player.currentRoom.id
+            graph.vertices[player.currentRoom.id][graph.opposite_direction(room_exit)] = curr_room
+            curr_room = player.currentRoom.id   
+            break
+    # bfs to find next unexplored
+    rooms = graph.bfs(player.currentRoom.id)
+    # check rooms from path returned by bfs and backtrack
+    if rooms is not None:
+        for room in rooms:
+            for direction in graph.vertices[curr_room]:
+                if graph.vertices[curr_room][direction] == room:
+                    traversalPath.append(direction)
+                    player.travel(direction)
+
+            curr_room = player.currentRoom.id
+
+
+
+# Pick random unexplored direction from the players current room
+# travel and log that direction
+# loop
+
+# This should cause your player to walk a depth first traversal
+# When you reach a dead-end, walk back to the nearest room that does contain an unexplored path
 
 
 # TRAVERSAL TEST
@@ -50,3 +161,10 @@ else:
 #         player.travel(cmds[0], True)
 #     else:
 #         print("I did not understand that command.")
+
+
+
+
+
+
+
